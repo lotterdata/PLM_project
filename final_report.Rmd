@@ -1,0 +1,10 @@
+---
+title: "Identifying Weight-Lifting Errors from Body Monitor Data"
+output: html_document
+---
+
+This reports describes a model for identifying specific errors in performing a common weight-lifting exercise using data from monitors attached to the weightlifters' bodies. The data is from a study described in the following paper:
+
+Velloso, E.; Bulling, A.; Gellersen, H.; Ugulino, W.; Fuks, H. Qualitative Activity Recognition of Weight Lifting Exercises. Proceedings of 4th International Conference in Cooperation with SIGCHI (Augmented Human '13) . Stuttgart, Germany: ACM SIGCHI, 2013.
+
+
