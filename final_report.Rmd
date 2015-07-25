@@ -3,8 +3,147 @@ title: "Identifying Weight-Lifting Errors from Body Monitor Data"
 output: html_document
 ---
 
-This reports describes a model for identifying specific errors in performing a common weight-lifting exercise using data from monitors attached to the weightlifters' bodies. The data is from a study described in the following paper:
+This reports describes a model for identifying specific errors in performing a common weight-lifting exercise using data from monitors attached to the weightlifters' bodies. The data is from a study described in the following paper:  
 
 Velloso, E.; Bulling, A.; Gellersen, H.; Ugulino, W.; Fuks, H. Qualitative Activity Recognition of Weight Lifting Exercises. Proceedings of 4th International Conference in Cooperation with SIGCHI (Augmented Human '13) . Stuttgart, Germany: ACM SIGCHI, 2013.
+
+
+We begin by loading the following libraries.
+
+```{r,warning=FALSE}
+library(dplyr,warn.conflicts=FALSE)
+library(lattice,warn.conflicts=FALSE)
+library(ggplot2,warn.conflicts=FALSE)
+library(caret,warn.conflicts=FALSE)
+library(MASS,warn.conflicts=FALSE)
+library(klaR,warn.conflicts=FALSE)
+```
+
+Then we load the data, set the random seed, and partition the data into a training set, a test set, and a validation set (60%, 20%, and 20% of the obsevations, respectively). We only use variables that correspond to raw monitor measurements, as these are the only ones that we can rely on being available in a useful form in future prediction problems. We will use the test set to select various models trained on the training set, so we need to also hold back a validation set that will allow us to estimate the error for the model we ultimately choose. (As an aside we need the prefix "dplyr::" on the select function because there is a function of the same name in the klaR package.)
+
+```{r}
+all <- read.csv("pml_training.csv") %>%
+    dplyr::select(
+        roll_belt,
+        pitch_belt,
+        yaw_belt,
+        total_accel_belt,
+        gyros_belt_x,
+        gyros_belt_y,
+        gyros_belt_z,
+        accel_belt_x,
+        accel_belt_y,
+        accel_belt_z,
+        magnet_belt_x,
+        magnet_belt_y,
+        magnet_belt_z,
+        roll_arm,
+        pitch_arm,
+        yaw_arm,
+        total_accel_arm,
+        gyros_arm_x,
+        gyros_arm_y,
+        gyros_arm_z,
+        accel_arm_x,
+        accel_arm_y,
+        accel_arm_z,
+        magnet_arm_x,
+        magnet_arm_y,
+        magnet_arm_z,
+        roll_dumbbell,
+        pitch_dumbbell,
+        yaw_dumbbell,
+        total_accel_dumbbell,
+        gyros_dumbbell_x,
+        gyros_dumbbell_y,
+        gyros_dumbbell_z,
+        accel_dumbbell_x,
+        accel_dumbbell_y,
+        accel_dumbbell_z,
+        magnet_dumbbell_x,
+        magnet_dumbbell_y,
+        magnet_dumbbell_z,
+        roll_forearm,
+        pitch_forearm,
+        yaw_forearm,
+        total_accel_forearm,
+        gyros_forearm_x,
+        gyros_forearm_y,
+        gyros_forearm_z,
+        accel_forearm_x,
+        accel_forearm_y,
+        accel_forearm_z,
+        magnet_forearm_x,
+        magnet_forearm_y,
+        magnet_forearm_z,
+        classe
+    )
+
+set.seed(135724)
+
+intrain <- createDataPartition(all$classe,p=0.6)[[1]]
+
+train <- all[intrain,]
+pretest <- all[-intrain,]
+
+intest <- createDataPartition(pretest$classe,p=0.5)[[1]]
+test <- pretest[intest,]
+validation <- pretest[-intest,]
+
+rm(pretest,intest,intrain)
+```
+
+Our strategy is to preprocess the data using principal component analysis and to build a linear discriminant analysis model and a quadratic discriminant analysis model for each possible number of principal components and choose the model that has the best performance on the test set.
+
+```{r, cache=TRUE}
+
+for(i in 1:52){
+    preProc <- preProcess(train[,-53],method="pca",pcaComp=i)
+    train.pc <- predict(preProc,train[,-53])
+    train.pc$classe <- train$classe
+    test.pc <- predict(preProc,test[,-53])
+    test.pc$classe <- test$classe    
+    
+    model <- train(classe ~ ., data = train.pc,method="lda")
+    trial <- predict(model,test.pc)
+    if(sum(trial==test.pc$classe) > lda.accuracy){
+        lda.index <- i
+        lda.accuracy <- sum(trial==test.pc$classe)
+        lda.best.model <- model
+    } 
+    
+    model <- train(classe ~ ., data = train.pc,method="qda")
+    trial <- predict(model,test.pc) 
+    if(sum(trial==test.pc$classe) > qda.accuracy){
+        qda.index <- i
+        qda.accuracy <- sum(trial==test.pc$classe)
+        qda.best.model <- model
+    } 
+}
+
+```
+
+```{r,echo=FALSE}
+print(paste("best lda accuracy",lda.accuracy))
+print(paste("best lda index",lda.index))
+print(paste("best qda accuracy",qda.accuracy))
+print(paste("best qda index",qda.index))
+
+```
+
+So for this set of models, we get the performance when we use quadratic discriminant analysis on all 52 principal components. Now we apply the model to the validation set and calculate its accuracy. 
+
+```{r}
+preProc <- preProcess(train[,-53],method="pca",pcaComp=qda.index)
+train.pc <- predict(preProc,train[,-53])
+train.pc$classe <- train$classe
+model <- train(classe ~ ., data = train.pc,method="qda")
+valid.pc <- predict(preProc,validation[,-53])
+valid.pc$classe <- validation$classe
+trial <- predict(model,valid.pc)
+valid.accuracy <- sum(trial==valid.pc$classe)/sum(trial==trial)
+print(valid.accuracy)
+
+```
 
 
