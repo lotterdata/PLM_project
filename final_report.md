@@ -1,9 +1,4 @@
----
-title: "Identifying Weight-Lifting Errors from Body Monitor Data"
-output:
-  html_document:
-    keep_md: yes
----
+# Identifying Weight-Lifting Errors from Body Monitor Data
 
 This reports describes a model for identifying specific errors in performing a common weight-lifting exercise using data from monitors attached to the weightlifters' bodies. The data is from a study described in the following paper:  
 
@@ -12,7 +7,8 @@ Velloso, E.; Bulling, A.; Gellersen, H.; Ugulino, W.; Fuks, H. Qualitative Activ
 
 We begin by loading the following libraries.
 
-```{r,warning=FALSE}
+
+```r
 library(dplyr,warn.conflicts=FALSE)
 library(lattice,warn.conflicts=FALSE)
 library(ggplot2,warn.conflicts=FALSE)
@@ -23,7 +19,8 @@ library(klaR,warn.conflicts=FALSE)
 
 Then we load the data, set the random seed, and partition the data into a training set, a test set, and a validation set (60%, 20%, and 20% of the obsevations, respectively). We only use variables that correspond to raw monitor measurements, as these are the only ones that we can rely on being available in a useful form in future prediction problems. We will use the test set to select various models trained on the training set, so we need to also hold back a validation set that will allow us to estimate the error for the model we ultimately choose. (As an aside we need the prefix "dplyr::" on the select function because there is a function of the same name in the klaR package.)
 
-```{r}
+
+```r
 all <- read.csv("pml_training.csv") %>%
     dplyr::select(
         roll_belt,
@@ -97,8 +94,8 @@ rm(pretest,intest,intrain)
 
 Our strategy is to preprocess the data using principal component analysis and to build a linear discriminant analysis model and a quadratic discriminant analysis model for each possible number of principal components and choose the model that has the best performance on the test set.
 
-```{r, cache=TRUE}
 
+```r
 for(i in 1:52){
     preProc <- preProcess(train[,-53],method="pca",pcaComp=i)
     train.pc <- predict(preProc,train[,-53])
@@ -122,20 +119,29 @@ for(i in 1:52){
         qda.best.model <- model
     } 
 }
-
 ```
 
-```{r,echo=FALSE}
-print(paste("best lda accuracy",lda.accuracy))
-print(paste("best lda index",lda.index))
-print(paste("best qda accuracy",qda.accuracy))
-print(paste("best qda index",qda.index))
 
+```
+## [1] "best lda accuracy 2725"
+```
+
+```
+## [1] "best lda index 52"
+```
+
+```
+## [1] "best qda accuracy 3510"
+```
+
+```
+## [1] "best qda index 52"
 ```
 
 So for this set of models, we get the performance when we use quadratic discriminant analysis on all 52 principal components. Now we apply the model to the validation set and calculate its accuracy. 
 
-```{r}
+
+```r
 preProc <- preProcess(train[,-53],method="pca",pcaComp=qda.index)
 train.pc <- predict(preProc,train[,-53])
 train.pc$classe <- train$classe
@@ -145,7 +151,10 @@ valid.pc$classe <- validation$classe
 trial <- predict(model,valid.pc)
 valid.accuracy <- sum(trial==valid.pc$classe)/sum(trial==trial)
 print(valid.accuracy)
+```
 
+```
+## [1] 0.8972725
 ```
 
 
